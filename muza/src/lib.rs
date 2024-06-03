@@ -1,6 +1,11 @@
+pub mod aliases;
+pub mod midi;
+pub mod waveforms;
+
 use std::error::Error;
 use std::io::{stdin, stdout, Write};
 
+use midi::callback;
 use midir::{Ignore, MidiInput};
 
 pub fn run() -> Result<(), Box<dyn Error>> {
@@ -42,8 +47,8 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let _conn_in = midi_in.connect(
         in_port,
         "midir-read-input",
-        move |stamp, message, _| {
-            println!("{}: {:?} (len = {})", stamp, message, message.len());
+        move |_, message, _| {
+            callback(message);
         },
         (),
     )?;
