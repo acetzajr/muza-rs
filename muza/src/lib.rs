@@ -1,66 +1,41 @@
+use std::io::stdin;
+
+use cpal::{
+    traits::{DeviceTrait, HostTrait, StreamTrait},
+    BufferSize, SampleRate, StreamConfig,
+};
+
 pub mod aliases;
 pub mod midi;
+pub mod midicon;
 pub mod waveforms;
 
-use std::error::Error;
-use std::io::{stdin, stdout, Write};
+pub fn run() {
+    let host = cpal::default_host();
+    let device = host
+        .default_output_device()
+        .expect("no output device available");
 
-use midi::callback;
-use midir::{Ignore, MidiInput};
-
-pub fn run() -> Result<(), Box<dyn Error>> {
-    let mut input = String::new();
-
-    let mut midi_in = MidiInput::new("midir reading input")?;
-    midi_in.ignore(Ignore::None);
-
-    // Get an input port (read from console if multiple are available)
-    let in_ports = midi_in.ports();
-    let in_port = match in_ports.len() {
-        0 => return Err("no input port found".into()),
-        1 => {
-            println!(
-                "Choosing the only available input port: {}",
-                midi_in.port_name(&in_ports[0]).unwrap()
-            );
-            &in_ports[0]
-        }
-        _ => {
-            println!("\nAvailable input ports:");
-            for (i, p) in in_ports.iter().enumerate() {
-                println!("{}: {}", i, midi_in.port_name(p).unwrap());
-            }
-            print!("Please select input port: ");
-            stdout().flush()?;
-            let mut input = String::new();
-            stdin().read_line(&mut input)?;
-            in_ports
-                .get(input.trim().parse::<usize>()?)
-                .ok_or("invalid input port selected")?
-        }
-    };
-
-    println!("\nOpening connection");
-    let in_port_name = midi_in.port_name(in_port)?;
-
-    // _conn_in needs to be a named parameter, because it needs to be kept alive until the end of the scope
-    let _conn_in = midi_in.connect(
-        in_port,
-        "midir-read-input",
-        move |_, message, _| {
-            callback(message);
-        },
-        (),
-    )?;
-
-    println!(
-        "Connection open, reading input from '{}' (press enter to exit) ...",
-        in_port_name
-    );
-
-    input.clear();
-    stdin().read_line(&mut input)?; // wait for next enter key press
-
-    println!("Closing connection");
-    Ok(())
+    let stream = device
+        .build_output_stream(
+            &StreamConfig {
+                channels: 2,
+                sample_rate: SampleRate(44_100),
+                buffer_size: BufferSize::Fixed(1024),
+            },
+            move |samples: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                // react to stream events and read or write stream data here.
+                println!("{}", samples.len());
+            },
+            move |err| {
+                // react to errors here.
+                print!("{}", err)
+            },
+            None, // None=blocking, Some(Duration)=timeout
+        )
+        .expect("could not build stream");
+    stream.play().unwrap();
+    println!("playing");
+    stdin().read_line(&mut String::new()).unwrap();
+    println!("exit");
 }
