@@ -1,3 +1,4 @@
+#![allow(unused)]
 use std::io::stdin;
 
 use cpal::{
@@ -6,8 +7,11 @@ use cpal::{
 };
 
 pub mod aliases;
+pub mod audio;
 pub mod midi;
 pub mod midicon;
+pub mod synths;
+pub mod wave;
 pub mod waveforms;
 
 pub fn run() {
@@ -23,11 +27,11 @@ pub fn run() {
                 sample_rate: SampleRate(44_100),
                 buffer_size: BufferSize::Fixed(1024),
             },
-            move |samples: &mut [f32], _: &cpal::OutputCallbackInfo| {
+            |samples: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 // react to stream events and read or write stream data here.
                 println!("{}", samples.len());
             },
-            move |err| {
+            |err| {
                 // react to errors here.
                 print!("{}", err)
             },
